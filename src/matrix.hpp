@@ -133,14 +133,15 @@ class matrix {
   typedef T value_type;
   typedef value_type* iterator;
   typedef const value_type* const_iterator;
-  explicit matrix(matrix&& other);
-  explicit matrix(const matrix& other);
+  matrix();
+  matrix(matrix&& other);
+  matrix(const matrix& other);
   matrix(const matrix_fragment& fragment);
   template <class... Args>
-  inline matrix(Args... args);
-  explicit matrix(std::vector<Size>&& dimension);
-  explicit matrix(std::initializer_list<Size> list)
-      : matrix(std::vector<Size>(list)) {}
+  inline matrix(Size first, Args... args);
+  matrix(std::vector<Size>& dimension);
+  matrix(std::vector<Size>&& dimension);
+  matrix(std::initializer_list<Size> list) : matrix(std::vector<Size>(list)) {}
   ~matrix();
   Size size() const { return size_; }
   const std::vector<Size>& dimension() const { return dimension_; }
@@ -152,13 +153,13 @@ class matrix {
 
  public:
   template <class... Args>
-  matrix& reshape(Args... args);
+  matrix& reshape(Size first, Args... args);
   template <class... Args>
-  matrix& repmat(Args... args);
+  matrix& repmat(Size first, Args... args);
   template <class... Args>
-  matrix& permute(Args... args);
+  matrix& permute(Size first, Args... args);
   template <typename... Args>
-  matrix& ones(Args... args) {
+  matrix& ones(Size first, Args... args) {
     *this = matrix(args...);
     for (int i = 0; i < size_; i++) {
       data_[i] = static_cast<T>(1);
@@ -173,14 +174,16 @@ class matrix {
     return *this;
   }
   matrix& squeeze(void);
-  value_type sum(void) const;
+  matrix sum(Size dimension_at = 0) const;
 
  public:
   template <class... Args>
-  T& operator()(Args... index);
+  T& operator()(Size first, Args... index);
   template <class... Args>
-  matrix_fragment operator()(std::initializer_list<Args>... args);
-  matrix_fragment operator()(std::vector<std::vector<Size>>& fragment);
+  const T& operator()(Size first, Args... index) const;
+  template <class... Args>
+  matrix_fragment operator()(std::initializer_list<Args>... args) const;
+  matrix_fragment operator()(std::vector<std::vector<Size>>& fragment) const;
 #define impl_matrix_operator(oper)         \
   matrix& operator oper(const T&& value) { \
     for (auto& val : *this) {              \
@@ -341,9 +344,12 @@ int matrix<T, Size>::compute_position(Size index,
   }
   return 0;
 }
+
 template <typename T, typename Size>
-matrix<T, Size>::matrix(std::vector<Size>&& dimension) {
-  dimension_ = std::forward<std::vector<Size>>(dimension);
+matrix<T, Size>::matrix(std::vector<Size>&& dimension) : matrix(dimension) {}
+template <typename T, typename Size>
+matrix<T, Size>::matrix(std::vector<Size>& dimension) {
+  dimension_ = dimension;
   size_ = compute_size_and_weight(dimension_, weight_);
   if (size_ > 0) {
     data_ = new T[size_];
@@ -352,10 +358,15 @@ matrix<T, Size>::matrix(std::vector<Size>&& dimension) {
   }
 }
 template <typename T, typename Size>
+matrix<T, Size>::matrix() {
+  size_ = 0;
+  data_ = nullptr;
+}
+template <typename T, typename Size>
 template <class... Args>
-matrix<T, Size>::matrix(Args... args) {
-  auto dimension = input_dims<Size>(args...);
-  new (this) matrix(std::move(dimension));
+matrix<T, Size>::matrix(Size first, Args... args) {
+  auto dimension = input_dims<Size>(first, args...);
+  new (this) matrix(dimension);
 }
 template <typename T, typename Size>
 matrix<T, Size>::matrix(matrix&& other) : matrix() {
@@ -401,16 +412,24 @@ matrix<T, Size>::~matrix() {
 
 template <typename T, typename Size>
 template <class... Args>
-T& matrix<T, Size>::operator()(Args... index) {
-  auto position = input_dims<Size>(index...);
+T& matrix<T, Size>::operator()(Size first, Args... index) {
+  auto position = input_dims<Size>(first, index...);
   Size idx = compute_index(position, weight_);
   assert(idx < size_);
   return data_[idx];
 }
 template <typename T, typename Size>
 template <class... Args>
-matrix<T, Size>& matrix<T, Size>::reshape(Args... args) {
-  dimension_ = input_dims<Size>(args...);
+const T& matrix<T, Size>::operator()(Size first, Args... index) const {
+  auto position = input_dims<Size>(first, index...);
+  Size idx = compute_index(position, weight_);
+  assert(idx < size_);
+  return data_[idx];
+}
+template <typename T, typename Size>
+template <class... Args>
+matrix<T, Size>& matrix<T, Size>::reshape(Size first, Args... args) {
+  dimension_ = input_dims<Size>(first, args...);
   bool auto_complete_flag = false;
   assert(dimension_.size() > 0);
   if (dimension_[dimension_.size() - 1] < 0) {
@@ -422,14 +441,16 @@ matrix<T, Size>& matrix<T, Size>::reshape(Args... args) {
     assert(size_ % new_size == 0);
     dimension_.push_back(size_ / new_size);
     weight_.push_back(new_size);
+  } else {
+    size_ = new_size;
   }
   return *this;
 }
 
 template <typename T, typename Size>
 template <class... Args>
-matrix<T, Size>& matrix<T, Size>::repmat(Args... args) {
-  auto ans_dimension = input_dims<Size>(args...);
+matrix<T, Size>& matrix<T, Size>::repmat(Size first, Args... args) {
+  auto ans_dimension = input_dims<Size>(first, args...);
   std::vector<Size> rep_dimension = ans_dimension;
   std::size_t i = 0;
   while (i < ans_dimension.size() && i < dimension_.size()) {
@@ -441,7 +462,7 @@ matrix<T, Size>& matrix<T, Size>::repmat(Args... args) {
     ans_dimension.insert(ans_dimension.end(), dimension_.begin() + i,
                          dimension_.end());
   }
-  matrix ans_matrix(std::move(ans_dimension));
+  matrix ans_matrix(ans_dimension);
   std::vector<Size> rep_weight;
   std::vector<Size> rep_position;
   Size rep_size = compute_size_and_weight(rep_dimension, rep_weight);
@@ -464,9 +485,9 @@ matrix<T, Size>& matrix<T, Size>::repmat(Args... args) {
 }
 template <typename T, typename Size>
 template <class... Args>
-matrix<T, Size>& matrix<T, Size>::permute(Args... args) {
+matrix<T, Size>& matrix<T, Size>::permute(Size first, Args... args) {
   std::vector<Size> ans_dimension;
-  auto vsort = input_dims<Size>(args...);
+  auto vsort = input_dims<Size>(first, args...);
   ans_dimension.reserve(dimension_.size());
   for (std::size_t i = 0; i < dimension_.size(); i++) {
     ans_dimension.push_back(dimension_[vsort[i] - 1]);
@@ -488,7 +509,7 @@ matrix<T, Size>& matrix<T, Size>::permute(Args... args) {
 }
 template <typename T, typename Size>
 matrix<T, Size>& matrix<T, Size>::squeeze(void) {
-  int i = 0, j = 0;
+  std::size_t i = 0, j = 0;
   while (i < dimension_.size()) {
     if (dimension_[i] != 1) {
       dimension_[j++] = dimension_[i];
@@ -498,27 +519,48 @@ matrix<T, Size>& matrix<T, Size>::squeeze(void) {
   if (j == 0 && size_ > 0) {
     dimension_[j++] = size_;
   }
+  dimension_.resize(j);
   size_ = compute_size_and_weight(dimension_, weight_);
   return *this;
 }
 template <typename T, typename Size>
-typename matrix<T, Size>::value_type matrix<T, Size>::sum(void) const {
-  value_type sum = T(0);
-  for (Size index = 0; index < size_; index++) {
-    sum += data_[index];
+matrix<T, Size> matrix<T, Size>::sum(Size dimension_at) const {
+  if (dimension_at == 0) {
+    while ((std::size_t)dimension_at < dimension_.size() &&
+           dimension_[dimension_at] == 1) {
+      dimension_at++;
+    }
+  } else {
+    dimension_at -= 1;
+  }
+  std::vector<std::vector<Size>> fragment;
+  for (std::size_t i = 0; i < dimension_.size(); i++) {
+    fragment.push_back({-1});
+  }
+  fragment[dimension_at][0] = 1;
+  matrix sum = (*this)(fragment);
+  for (Size i = 2; i <= dimension_[dimension_at]; i++) {
+    fragment[dimension_at][0] = i;
+    auto matrix_frag = (*this)(fragment);
+    Size index = 0;
+    for (auto& value : matrix_frag) {
+      if (index < sum.size_) {
+        sum.data_[index++] += value;
+      }
+    }
   }
   return sum;
 }
 template <typename T, typename Size>
 template <class... Args>
 typename matrix<T, Size>::matrix_fragment matrix<T, Size>::operator()(
-    std::initializer_list<Args>... args) {
+    std::initializer_list<Args>... args) const {
   auto slice = input_dims<std::initializer_list<Size>>(args...);
   return matrix_fragment(*this, slice);
 }
 template <typename T, typename Size>
 typename matrix<T, Size>::matrix_fragment matrix<T, Size>::operator()(
-    std::vector<std::vector<Size>>& fragment) {
+    std::vector<std::vector<Size>>& fragment) const {
   return matrix_fragment(*this, fragment);
 }
 template <typename T, typename Size>

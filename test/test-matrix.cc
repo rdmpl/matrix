@@ -1,27 +1,47 @@
 #include "matrix.hpp"
 #include "stdio.h"
-using matrix_v2_type = rdmplmat::matrix<int>;
-static int func() { return 0; }
-int main() {
-  int a;
-  a = 1;
-  matrix_v2_type m1_v2(5, 8, 4, 2, 3, 4);
-  int test_start = 0;
-  test_start = 0;
-  for (auto &value : m1_v2) {
-    value = test_start++;
+using matrix_type = rdmplmat::matrix<int>;
+int print_matrix(const matrix_type &matrix) {
+  // print dimension
+  const auto &dimension = matrix.dimension();
+  printf("dimension: ");
+  for (std::size_t i = 0; i < dimension.size(); i++) {
+    printf("%d", dimension[i]);
+    if (i != dimension.size() - 1) {
+      printf(" x ");
+    } else {
+      printf("\n");
+    }
   }
-  m1_v2.permute(2, 1, 4, 6, 5, 3);
-  m1_v2.reshape(40, 8, 12);
-  m1_v2.permute(2, 1, 3);
-  matrix_v2_type m2_v2 = m1_v2({-1}, {-2, 1}, {1, 2, 3});
-  m2_v2({1, 4, 5, 6}, {-1}, {-1}) = m2_v2({2, 3, 7, 8}, {-1}, {-1});
-  m2_v2.repmat(3);
-  m2_v2.repmat(3, 4, 5);
-  m2_v2.repmat(2, 2, 6, 6, 1);
-  m2_v2(2, 2, 6, 6, 1) = 10288;
-  matrix_v2_type m3_v2({1, 2, 4});
-  m3_v2.linspace(1, 100, 20);
-  m3_v2 *= m3_v2;
+  if (dimension.size() == 1) {
+    for (int i = 1; i <= dimension[0]; i++) {
+      printf("%d ", matrix(i));
+    }
+    printf("\n");
+  } else if (dimension.size() == 2) {
+    for (int i = 1; i <= dimension[0]; i++) {
+      for (int j = 1; j <= dimension[1]; j++) {
+        printf("%d ", matrix(i, j));
+      }
+      printf("\n");
+    }
+  }
+  return 0;
+}
+int main() {
+  matrix_type mat1({2, 3});
+  print_matrix(mat1);
+  matrix_type mat;
+  mat.linspace(0, 99, 100).reshape(2, 2, 2);
+  print_matrix(mat);
+  matrix_type new_mat = mat.sum(2);
+  new_mat.squeeze();
+  print_matrix(new_mat);
+  mat.reshape(4, 2);
+  print_matrix(mat);
+  mat.permute(2, 1);
+  print_matrix(mat);
+  mat.repmat(3, 2);
+  print_matrix(mat);
   return 0;
 }
