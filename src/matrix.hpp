@@ -162,7 +162,7 @@ class matrix {
   matrix& permute(size_type first, Args... args);
   template <typename... Args>
   matrix& ones(size_type first, Args... args) {
-    *this = matrix(args...);
+    *this = matrix(first, args...);
     for (decltype(size_) i = 0; i < size_; i++) {
       data_[i] = static_cast<T>(1);
     }

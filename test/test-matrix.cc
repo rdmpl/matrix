@@ -47,5 +47,7 @@ int main() {
   mat.repmat(3, 2);
   matrix_type mm = mat({1, 2}, {2, 3});
   print_matrix(mat);
+  mm.ones(2, 3);
+  print_matrix(mm);
   return 0;
 }
