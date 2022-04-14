@@ -30,12 +30,6 @@
 #include <vector>
 
 namespace rdmplmat {
-namespace {
-template <typename T, class... Args>
-inline std::vector<T> input_dims(Args... args) {
-  return {args...};
-}
-}  // namespace
 template <typename T, typename Size = ssize_t>
 class matrix {
  public:
@@ -377,7 +371,7 @@ matrix<T, Size>::matrix() {
 template <typename T, typename Size>
 template <class... Args>
 matrix<T, Size>::matrix(size_type first, Args... args) {
-  auto dimension = input_dims<size_type>(first, args...);
+  std::vector<size_type> dimension = {first, (size_type)args...};
   new (this) matrix(dimension);
 }
 template <typename T, typename Size>
@@ -425,7 +419,7 @@ matrix<T, Size>::~matrix() {
 template <typename T, typename Size>
 template <class... Args>
 T& matrix<T, Size>::operator()(size_type first, Args... index) {
-  auto position = input_dims<size_type>(first, index...);
+  std::vector<size_type> position = {first, (size_type)index...};
   size_type idx = compute_index(position, weight_);
   assert(idx < size_);
   return data_[idx];
@@ -433,7 +427,7 @@ T& matrix<T, Size>::operator()(size_type first, Args... index) {
 template <typename T, typename Size>
 template <class... Args>
 const T& matrix<T, Size>::operator()(size_type first, Args... index) const {
-  auto position = input_dims<size_type>(first, index...);
+  std::vector<size_type> position = {first, (size_type)index...};
   size_type idx = compute_index(position, weight_);
   assert(idx < size_);
   return data_[idx];
