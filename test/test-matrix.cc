@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "matrix.hpp"
 #include "stdio.h"
 using matrix_type = rdmplmat::matrix<int>;
@@ -6,7 +8,8 @@ int print_matrix(const matrix_type &matrix) {
   const auto &dimension = matrix.dimension();
   printf("dimension: ");
   for (std::size_t i = 0; i < dimension.size(); i++) {
-    printf("%d", dimension[i]);
+    // printf("%ld", dimension[i]);
+    std::cout << dimension[i];
     if (i != dimension.size() - 1) {
       printf(" x ");
     } else {
@@ -14,13 +17,13 @@ int print_matrix(const matrix_type &matrix) {
     }
   }
   if (dimension.size() == 1) {
-    for (int i = 1; i <= dimension[0]; i++) {
+    for (auto i = (decltype(dimension[0]))1; i <= dimension[0]; i++) {
       printf("%d ", matrix(i));
     }
     printf("\n");
   } else if (dimension.size() == 2) {
-    for (int i = 1; i <= dimension[0]; i++) {
-      for (int j = 1; j <= dimension[1]; j++) {
+    for (auto i = (decltype(dimension[0]))1; i <= dimension[0]; i++) {
+      for (auto j = (decltype(dimension[0]))1; j <= dimension[1]; j++) {
         printf("%d ", matrix(i, j));
       }
       printf("\n");
@@ -42,6 +45,7 @@ int main() {
   mat.permute(2, 1);
   print_matrix(mat);
   mat.repmat(3, 2);
+  matrix_type mm = mat({1, 2}, {2, 3});
   print_matrix(mat);
   return 0;
 }
