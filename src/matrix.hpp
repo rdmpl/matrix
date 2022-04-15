@@ -25,7 +25,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include <array>
 #include <initializer_list>
 #include <vector>
 
@@ -146,6 +145,8 @@ class matrix {
       : matrix(std::vector<size_type>(list)) {}
   ~matrix();
   size_type size() const { return size_; }
+  size_type numel() const { return size_; }
+  size_type ndims() const { return dimension_.size(); }
   const std::vector<size_type>& dimension() const { return dimension_; }
   iterator begin() { return data_; }
   iterator end() { return data_ + size_; }
